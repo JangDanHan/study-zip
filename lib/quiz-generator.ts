@@ -234,8 +234,9 @@ ${text}
 }
 `
 
+  const modelName = "gemini-3.6-flash"
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -243,14 +244,15 @@ ${text}
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
           responseMimeType: "application/json",
-          temperature: 0.4,
+          temperature: 0.3,
         },
       }),
     },
   )
 
   if (!response.ok) {
-    throw new Error(`Gemini API error: ${response.status} ${response.statusText}`)
+    const errBody = await response.text()
+    throw new Error(`Gemini API error (${response.status}): ${errBody}`)
   }
 
   const data = await response.json()

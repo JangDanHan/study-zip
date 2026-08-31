@@ -83,3 +83,22 @@ graph LR
 - **문서 위치**: `docs/development-plan.md`
 - **스프린트 백로그 추적**: [`docs/sprint-backlog.md`](file:///c:/study_zip/docs/sprint-backlog.md)
 - **문서 인덱스**: [`docs/README.md`](file:///c:/study_zip/docs/README.md)
+
+---
+
+## 5. 🤖 인공지능(Gemini AI) 연동 현황 및 향후 고도화 로드맵
+
+### 5.1 실시간 Gemini AI 연동 사양
+- **엔진 모델**: `Google Gemini 3.6 Flash` (`models/gemini-3.6-flash:generateContent`)
+- **보안 환경 변수**: `GEMINI_API_KEY` ([`.env`](file:///c:/study_zip/.env) 내 저장, 깃 추적 제외 완료)
+- **응답 보장**: 정형 JSON Schema 강제 출력 (`responseMimeType: "application/json"`)
+- **지능형 이중화**: API 키 부재 또는 외부 네트워크 장애 발생 시에도 무중단 작동하는 지능형 어휘 분석 Fallback 탑재
+
+### 5.2 향후 AI 서비스 고도화 로드맵
+1. **Phase 1: LLM 실시간 주관식 정밀 채점**
+   - 단순 키워드 매칭을 넘어 사용자의 문장형 답변을 Gemini가 의미론적으로 분석하여 부분점수 및 1:1 맞춤 첨삭 피드백 제공.
+2. **Phase 2: 오답 기반 원포인트 보완 퀴즈 생성**
+   - 채점 결과 오답 문항의 취약 개념을 식별하여 해당 영역에 특화된 복습 퀴즈(1~2문항) 즉시 재생성.
+3. **Phase 3: 시험/학습 목표별 프롬프트 프리셋**
+   - 수능, 공무원 시험, 기사 자격증, 어학 시험 등 목적에 따라 문항 난이도와 어조를 자동 튜닝하는 맞춤 모드 제공.
+
