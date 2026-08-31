@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react"
 import { GraduationCap } from "lucide-react"
-import { InputSection } from "@/components/quiz/input-section"
+import { InputSection, MIN_TEXT_LENGTH, MAX_TEXT_LENGTH } from "@/components/quiz/input-section"
 import { LoadingSection } from "@/components/quiz/loading-section"
 import { QuizSection, type AnswerMap } from "@/components/quiz/quiz-section"
 import { ResultSection } from "@/components/quiz/result-section"
@@ -10,31 +10,44 @@ import { generateQuestions, type Question, type QuizType } from "@/lib/quiz-data
 
 type Phase = "input" | "loading" | "quiz" | "result"
 
-const MIN_TEXT_LENGTH = 20
-
 export default function Page() {
   const [phase, setPhase] = useState<Phase>("input")
   const [text, setText] = useState("")
   const [quizType, setQuizType] = useState<QuizType>("multiple")
   const [error, setError] = useState<string | null>(null)
+  const [autoFocusTrigger, setAutoFocusTrigger] = useState(0)
   const [questions, setQuestions] = useState<Question[]>([])
   const [answers, setAnswers] = useState<AnswerMap>({})
   const resultRef = useRef<HTMLDivElement>(null)
 
   function handleGenerate() {
     const trimmed = text.trim()
+    
+    // PRD 5-1: Empty input
     if (trimmed.length === 0) {
       setError("학습 내용을 입력해 주세요")
+      setAutoFocusTrigger((prev) => prev + 1)
       return
     }
+
+    // PRD 5-2: Too short (< 100 chars)
     if (trimmed.length < MIN_TEXT_LENGTH) {
-      setError("학습 내용을 조금 더 길게 써주세요")
+      setError(`학습 내용을 조금 더 길게 써주세요 (현재 ${trimmed.length}자 / 최소 ${MIN_TEXT_LENGTH}자)`)
+      setAutoFocusTrigger((prev) => prev + 1)
       return
     }
+
+    // PRD 5-3: Too long (> 3000 chars)
+    if (text.length > MAX_TEXT_LENGTH) {
+      setError(`입력이 너무 깁니다. ${MAX_TEXT_LENGTH.toLocaleString()}자 이내로 줄여주세요 (현재 ${text.length.toLocaleString()}자)`)
+      setAutoFocusTrigger((prev) => prev + 1)
+      return
+    }
+
     setError(null)
     setPhase("loading")
 
-    // Simulate quiz generation with dummy data.
+    // Simulate quiz generation (will be connected to API in Sprint 2)
     window.setTimeout(() => {
       setQuestions(generateQuestions(quizType))
       setAnswers({})
@@ -91,6 +104,7 @@ export default function Page() {
           error={error}
           onGenerate={handleGenerate}
           disabled={phase === "loading"}
+          autoFocusTrigger={autoFocusTrigger}
         />
 
         {phase === "loading" && (
