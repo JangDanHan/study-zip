@@ -2,7 +2,7 @@
 
 > **기준 문서**: [`PRD.md`](file:///c:/study_zip/PRD.md)  
 > **프로젝트 목표**: 사용자가 입력한 학습 텍스트를 바탕으로 기본개념 2문제 + 응용 3문제(총 5문제)를 생성하고, 즉시 풀이 및 채점/해설을 제공하는 단일 화면 웹 서비스 구현  
-> **최종 진행 상태**: **전체 스프린트 완료 (Sprint 1 ~ 4 Done, DoD 100% 달성)**
+> **최종 진행 상태**: **전체 스프린트 완료 (Sprint 1 ~ 6 Done, DoD 100% 달성, AI 고도화 및 UX 극대화 완료)**
 
 ---
 
@@ -16,21 +16,21 @@
 
 ### 1.2 기술 스택
 - **Framework**: Next.js 16 (App Router), React 19, TypeScript
-- **Styling**: Tailwind CSS v4, Lucide React
-- **AI/LLM Engine**: Google Gemini API / 지능형 Fallback Generator ([`lib/quiz-generator.ts`](file:///c:/study_zip/lib/quiz-generator.ts))
+- **Styling**: Tailwind CSS v4, Lucide React (Light/Dark Theme 지원)
+- **AI/LLM Engine**: Google Gemini 3.6 Flash API + 실시간 주관식 AI 채점 및 첨삭 + 지능형 Fallback Generator
 - **Validation**: 자동화 전수 검증 스위트 ([`scripts/verify-all.mjs`](file:///c:/study_zip/scripts/verify-all.mjs))
 
 ---
 
 ## 2. 스프린트 마일스톤 및 완료 현황
 
-전체 4단계 스프린트가 모두 성공적으로 완료되었습니다.
-
 ```mermaid
 graph LR
-    S1["✅ Sprint 1<br/>기반 구축 & 입력/예외"] --> S2["✅ Sprint 2<br/>AI 퀴즈 생성 엔진"]
-    S2 --> S3["✅ Sprint 3<br/>풀이·채점·결과 고도화"]
-    S3 --> S4["✅ Sprint 4<br/>종합 예외 & DoD 검증"]
+    S1["✅ Sprint 1<br/>입력 UX & 검증"] --> S2["✅ Sprint 2<br/>AI 퀴즈 생성 엔진"]
+    S2 --> S3["✅ Sprint 3<br/>풀이·채점·결과"]
+    S3 --> S4["✅ Sprint 4<br/>예외 전수 & DoD"]
+    S4 --> S5["✅ Sprint 5<br/>예시프리셋·오답노트·다크모드"]
+    S5 --> S6["✅ Sprint 6<br/>AI 주관식 문장 첨삭 채점"]
 ```
 
 | 스프린트 | 주요 목표 | 핵심 산출물 | 상태 | 커밋 해시 |
@@ -39,6 +39,8 @@ graph LR
 | **Sprint 2** | AI 퀴즈 생성 백엔드 API & 로딩/타임아웃 | LLM 연동 API Route (`/api/quiz/generate`), 30초 타임아웃, 복구 UX | **✅ 완료** | `32bc37d` |
 | **Sprint 3** | 퀴즈 풀이 및 채점/해설 엔진 고도화 | 풀이 프로그레스, 4지선다/주관식 카드, 유연 채점, 미응답 오답 처리 | **✅ 완료** | `3058be6` |
 | **Sprint 4** | 전방위 예외 처리, 재생성 및 DoD 최종 검증 | 자동화 검증 스위트, 7대 예외 전수 통과, 프로덕션 빌드 완료 | **✅ 완료** | `caf4719` |
+| **Sprint 5** | 사용자 경험(UX) 극대화 | 4대 예시 프리셋, 오답노트 마크다운 복사, 라이트/다크 테마 토글 | **✅ 완료** | `최신` |
+| **Sprint 6** | Gemini 3.6 Flash 기반 AI 주관식 첨삭 채점 | 실시간 AI 문장 채점 API (`/api/quiz/grade`), 1:1 맞춤 첨삭 피드백 | **✅ 완료** | `최신` |
 
 ---
 
@@ -50,16 +52,12 @@ graph LR
 - [x] `5-3` 3,000자 초과 입력 시: `"입력이 너무 깁니다. 3,000자 이내로 줄여주세요 (현재 X자)"` 경고 및 생성 방지.
 - [x] 실시간 글자수 카운터 (`현재 / 3,000자`) 및 유형 선택 라디오 그룹 (`객관식`, `주관식`, `혼합`) 구현.
 
----
-
 ### 🚀 Sprint 2: 퀴즈 생성 백엔드 API 및 로딩/타임아웃 핸들러 (완료)
 - [x] Next.js API Route 구축 ([`/api/quiz/generate`](file:///c:/study_zip/app/api/quiz/generate/route.ts)).
 - [x] 기본개념 2문항 + 응용 3문항 (총 5문항) 정형 JSON 스키마 강제.
-- [x] Gemini API 연동 + 오프라인/테스트용 지능형 어휘 파싱 Fallback 엔진 탑재.
+- [x] Gemini 3.6 Flash 연동 + 오프라인/테스트용 지능형 어휘 파싱 Fallback 엔진 탑재.
 - [x] `5-4` 30초 타임아웃 감지: `"응답이 지연되고 있습니다. 다시 시도해 주세요"` + 재시도 버튼.
 - [x] `5-5` 생성 실패/형식 깨짐 감지 시 재시도 안내 및 이전 입력 텍스트 상태 유지.
-
----
 
 ### 🚀 Sprint 3: 풀이, 채점 및 결과/해설 인터페이스 (완료)
 - [x] 문제 1~2번 `[기본개념]`, 3~5번 `[응용]` 배지 및 실시간 풀이 진행률 프로그레스 바.
@@ -69,12 +67,18 @@ graph LR
 - [x] SVG 원형 게이지 차트(정답률 %), 문항별 내 답 / 정답 / 해설 명확한 시각적 대비.
 - [x] "다시 만들기" 버튼으로 최상단 스크롤 이동 및 무한 반복 사용 지원.
 
----
-
 ### 🚀 Sprint 4: 예외 시나리오 전수 검증 및 DoD 최종 달성 (완료)
 - [x] **자동화 검증 스크립트 작성 및 통과 ([`scripts/verify-all.mjs`](file:///c:/study_zip/scripts/verify-all.mjs))**: 21개 전 테스트 케이스 PASS.
 - [x] **7대 예외 전수 점검**: `5-1`(빈값), `5-2`(짧은값), `5-3`(초과값), `5-4`(30s 지연), `5-5`(생성실패 복구), `5-6`(미응답 오답), `5-7`(Stateless 새로고침 리셋).
-- [x] **Next.js 프로덕션 빌드 (`npm run build`) 통과**: TypeScript 타입 에러 0건.
+
+### 🚀 Sprint 5: 사용자 경험(UX) 극대화 (완료)
+- [x] **원클릭 예시 텍스트 프리셋**: IT/CS, 한국사, 경제, 물리 4대 카테고리 원클릭 자동 입력.
+- [x] **오답노트 원클릭 복사**: Notion/옵시디언 호환 Markdown 포맷 클립보드 복사 및 복사 완료 피드백.
+- [x] **다크/라이트 테마**: 눈이 편안한 테마 스위처 컴포넌트 탑재.
+
+### 🚀 Sprint 6: Gemini 3.6 Flash 기반 AI 주관식 문장형 첨삭 채점 (완료)
+- [x] **AI 시맨틱 채점 엔드포인트 ([`/api/quiz/grade`](file:///c:/study_zip/app/api/quiz/grade/route.ts))**: 사용자의 문장형 답변을 Gemini가 직접 읽고 핵심 의미 충족 여부 판별.
+- [x] **1:1 맞춤 첨삭 피드백**: 주관식 문항별 AI 맞춤 피드백 카드 제공.
 
 ---
 
@@ -83,22 +87,3 @@ graph LR
 - **문서 위치**: `docs/development-plan.md`
 - **스프린트 백로그 추적**: [`docs/sprint-backlog.md`](file:///c:/study_zip/docs/sprint-backlog.md)
 - **문서 인덱스**: [`docs/README.md`](file:///c:/study_zip/docs/README.md)
-
----
-
-## 5. 🤖 인공지능(Gemini AI) 연동 현황 및 향후 고도화 로드맵
-
-### 5.1 실시간 Gemini AI 연동 사양
-- **엔진 모델**: `Google Gemini 3.6 Flash` (`models/gemini-3.6-flash:generateContent`)
-- **보안 환경 변수**: `GEMINI_API_KEY` ([`.env`](file:///c:/study_zip/.env) 내 저장, 깃 추적 제외 완료)
-- **응답 보장**: 정형 JSON Schema 강제 출력 (`responseMimeType: "application/json"`)
-- **지능형 이중화**: API 키 부재 또는 외부 네트워크 장애 발생 시에도 무중단 작동하는 지능형 어휘 분석 Fallback 탑재
-
-### 5.2 향후 AI 서비스 고도화 로드맵
-1. **Phase 1: LLM 실시간 주관식 정밀 채점**
-   - 단순 키워드 매칭을 넘어 사용자의 문장형 답변을 Gemini가 의미론적으로 분석하여 부분점수 및 1:1 맞춤 첨삭 피드백 제공.
-2. **Phase 2: 오답 기반 원포인트 보완 퀴즈 생성**
-   - 채점 결과 오답 문항의 취약 개념을 식별하여 해당 영역에 특화된 복습 퀴즈(1~2문항) 즉시 재생성.
-3. **Phase 3: 시험/학습 목표별 프롬프트 프리셋**
-   - 수능, 공무원 시험, 기사 자격증, 어학 시험 등 목적에 따라 문항 난이도와 어조를 자동 튜닝하는 맞춤 모드 제공.
-

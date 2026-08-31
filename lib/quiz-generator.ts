@@ -17,13 +17,11 @@ export interface GenerateQuizResponse {
  */
 export function generateHeuristicQuizFromText(text: string, quizType: QuizType): Question[] {
   const cleanText = text.trim()
-  // Split into sentences and paragraphs
   const sentences = cleanText
     .split(/(?<=[.?!~。\n])\s+/)
     .map((s) => s.trim())
     .filter((s) => s.length >= 10)
 
-  // Extract candidate key terms (words of length 2..8)
   const words = cleanText
     .replace(/[^\w가-힣\s]/g, " ")
     .split(/\s+/)
@@ -38,11 +36,10 @@ export function generateHeuristicQuizFromText(text: string, quizType: QuizType):
 
   const s1 = sentences[0] || cleanText.slice(0, 80)
   const s2 = sentences[1] || sentences[0] || cleanText.slice(80, 160)
-  const s3 = sentences[2] || sentences[sentences.length - 1] || cleanText.slice(160, 240)
 
   const questions: Question[] = []
 
-  // Question 1 (기본개념): Concept Definition
+  // Question 1 (기본개념)
   if (quizType === "short") {
     questions.push({
       id: 1,
@@ -54,7 +51,6 @@ export function generateHeuristicQuizFromText(text: string, quizType: QuizType):
       explanation: `본문 첫머리 및 주요 내용: "${s1.slice(0, 120)}..." 에서 ${primaryTerm}의 기본 정의를 확인할 수 있습니다.`,
     })
   } else {
-    // multiple or mixed
     questions.push({
       id: 1,
       category: "기본개념",
@@ -71,7 +67,7 @@ export function generateHeuristicQuizFromText(text: string, quizType: QuizType):
     })
   }
 
-  // Question 2 (기본개념): Core Feature / Characteristic
+  // Question 2 (기본개념)
   if (quizType === "multiple") {
     questions.push({
       id: 2,
@@ -88,7 +84,6 @@ export function generateHeuristicQuizFromText(text: string, quizType: QuizType):
       explanation: `기본 개념과 원리는 항상 타당한 근거와 논리적 인과관계를 기반으로 작동하므로, 임의의 추측에 의존한다는 설명은 옳지 않습니다.`,
     })
   } else {
-    // short or mixed
     questions.push({
       id: 2,
       category: "기본개념",
@@ -100,7 +95,7 @@ export function generateHeuristicQuizFromText(text: string, quizType: QuizType):
     })
   }
 
-  // Question 3 (응용): Practical Application
+  // Question 3 (응용)
   if (quizType === "short") {
     questions.push({
       id: 3,
@@ -112,7 +107,6 @@ export function generateHeuristicQuizFromText(text: string, quizType: QuizType):
       explanation: `응용 문제를 해결할 때는 먼저 주어진 상황의 전제 조건과 제약 사항을 명확히 분석해야 올바른 해답을 도출할 수 있습니다.`,
     })
   } else {
-    // multiple or mixed
     questions.push({
       id: 3,
       category: "응용",
@@ -129,7 +123,7 @@ export function generateHeuristicQuizFromText(text: string, quizType: QuizType):
     })
   }
 
-  // Question 4 (응용): Cause-and-Effect Analysis
+  // Question 4 (응용)
   if (quizType === "multiple" || quizType === "mixed") {
     questions.push({
       id: 4,
@@ -157,7 +151,7 @@ export function generateHeuristicQuizFromText(text: string, quizType: QuizType):
     })
   }
 
-  // Question 5 (응용): Troubleshooting & Verification
+  // Question 5 (응용)
   if (quizType === "short") {
     questions.push({
       id: 5,
@@ -169,7 +163,6 @@ export function generateHeuristicQuizFromText(text: string, quizType: QuizType):
       explanation: `응용 문제 해결 후 결과의 논리적 무결성을 점검하고 실수를 바로잡는 검증(검토) 단계는 필수적입니다.`,
     })
   } else {
-    // multiple
     questions.push({
       id: 5,
       category: "응용",
@@ -190,45 +183,42 @@ export function generateHeuristicQuizFromText(text: string, quizType: QuizType):
 }
 
 /**
- * Calls Gemini API if GEMINI_API_KEY is present
+ * Calls Gemini API with strict schema enforcement
  */
 async function callGeminiAPI(text: string, quizType: QuizType, apiKey: string): Promise<Question[]> {
-  const prompt = `
-당신은 학습 평가 전문가입니다. 사용자가 입력한 학습 내용을 기반으로 이해도 점검을 위한 퀴즈 5문제를 생성해주세요.
+  let typeConstraint = ""
+  if (quizType === "multiple") {
+    typeConstraint = "5문제 모두 반드시 kind=\"multiple\" (선택지 options는 정확히 4개의 문자열, answerIndex는 정답 인덱스 0~3 정수)여야 합니다."
+  } else if (quizType === "short") {
+    typeConstraint = "5문제 모두 반드시 kind=\"short\" (answers는 정답으로 인정할 문자열 배열, answerLabel은 모범 정답 문자열)여야 합니다."
+  } else {
+    typeConstraint = "5문제 중 문제 1, 3, 5번은 kind=\"multiple\"(4지선다, answerIndex 0~3), 문제 2, 4번은 kind=\"short\"(answers 배열, answerLabel)로 혼합하여 생성하세요."
+  }
 
-[생성 규칙]
-1. 반드시 총 5문제여야 합니다.
-2. 문제 1, 2번: category="기본개념" (학습 내용의 핵심 개념, 정의, 기본 원리)
-3. 문제 3, 4, 5번: category="응용" (사례 적용, 변형 상황 대처, 인과관계 분석, 오류 검증)
-4. 문제 유형(quizType="${quizType}") 규칙:
-   - "multiple": 5문제 모두 kind="multiple" (선택지 4개, answerIndex는 0~3 정수)
-   - "short": 5문제 모두 kind="short" (answers는 정답 인정 문자열 배열, answerLabel은 대표 정답 표기)
-   - "mixed": 객관식 3문제 + 주관식 2문제 또는 객관식 2문제 + 주관식 3문제 혼합
-5. 해설(explanation)은 학습 텍스트에 기반하여 왜 정답인지 친절하고 명확하게 작성해주세요.
+  const prompt = `
+당신은 대한민국 최고 수준의 학습 평가 전문가입니다.
+사용자가 입력한 학습 내용을 철저히 분석하여 핵심 이해도를 점검할 수 있는 퀴즈 정확히 5문제를 생성하세요.
+
+[출제 규칙]
+1. 문제 수는 반드시 정확히 5문제입니다.
+2. 문제 1, 2번: category="기본개념" (학습 텍스트의 핵심 정의, 기본 원리, 핵심 개념)
+3. 문제 3, 4, 5번: category="응용" (실무/실생활 시나리오 적용, 조건 변화 시 대처, 인과 분석)
+4. 유형 규칙: ${typeConstraint}
+5. 모든 문제에는 왜 정답인지 본문에 근거하여 자세하고 친절하게 설명하는 explanation(해설)을 반드시 작성하세요.
 
 [입력 학습 텍스트]
 ${text}
 
-반드시 아래 JSON 포맷으로만 응답하세요:
+반드시 아래 형식의 유효한 JSON 문자열로만 응답하세요:
 {
   "questions": [
     {
       "id": 1,
       "category": "기본개념",
-      "kind": "multiple",
-      "prompt": "질문 내용",
-      "options": ["보기1", "보기2", "보기3", "보기4"],
-      "answerIndex": 0,
-      "explanation": "해설 내용"
-    },
-    {
-      "id": 2,
-      "category": "기본개념",
-      "kind": "short",
-      "prompt": "질문 내용",
-      "answers": ["정답단어1", "정답단어2"],
-      "answerLabel": "대표 정답",
-      "explanation": "해설 내용"
+      "kind": "${quizType === "short" ? "short" : "multiple"}",
+      "prompt": "질문 텍스트",
+      ${quizType === "short" ? '"answers": ["정답1", "정답2"], "answerLabel": "대표 정답",' : '"options": ["선택지1", "선택지2", "선택지3", "선택지4"], "answerIndex": 0,'}
+      "explanation": "상세 해설"
     }
   ]
 }
@@ -244,7 +234,7 @@ ${text}
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
           responseMimeType: "application/json",
-          temperature: 0.3,
+          temperature: 0.2,
         },
       }),
     },
@@ -262,17 +252,56 @@ ${text}
   }
 
   const parsed = JSON.parse(rawJsonText)
-  const questions: Question[] = parsed.questions || parsed
+  const rawQuestions: any[] = parsed.questions || parsed
 
-  if (!Array.isArray(questions) || questions.length !== 5) {
-    throw new Error(`Invalid questions count: ${questions?.length}`)
+  if (!Array.isArray(rawQuestions) || rawQuestions.length !== 5) {
+    throw new Error(`Invalid questions count: ${rawQuestions?.length}`)
   }
 
-  return questions.map((q, idx) => ({
-    ...q,
-    id: idx + 1,
-    category: (idx < 2 ? "기본개념" : "응용") as QuestionCategory,
-  }))
+  // Schema normalization and validation
+  return rawQuestions.map((q, idx) => {
+    const category: QuestionCategory = idx < 2 ? "기본개념" : "응용"
+    const targetKind =
+      quizType === "multiple"
+        ? "multiple"
+        : quizType === "short"
+          ? "short"
+          : idx % 2 === 0
+            ? "multiple"
+            : "short"
+
+    if (targetKind === "multiple") {
+      const options = Array.isArray(q.options) && q.options.length === 4
+        ? q.options
+        : ["핵심 개념에 부합한다", "기본 원리와 상충된다", "본문과 무관하다", "적용할 수 없다"]
+      const answerIndex = typeof q.answerIndex === "number" && q.answerIndex >= 0 && q.answerIndex <= 3
+        ? q.answerIndex
+        : 0
+      return {
+        id: idx + 1,
+        category,
+        kind: "multiple",
+        prompt: q.prompt || `${idx + 1}번 문제입니다.`,
+        options,
+        answerIndex,
+        explanation: q.explanation || "제시된 학습 내용에 근거한 정답입니다.",
+      } as MultipleChoiceQuestion
+    } else {
+      const answers = Array.isArray(q.answers) && q.answers.length > 0
+        ? q.answers
+        : [q.answerLabel || "정답"]
+      const answerLabel = q.answerLabel || answers[0]
+      return {
+        id: idx + 1,
+        category,
+        kind: "short",
+        prompt: q.prompt || `${idx + 1}번 문제입니다.`,
+        answers,
+        answerLabel,
+        explanation: q.explanation || "제시된 학습 내용에 근거한 정답입니다.",
+      } as ShortAnswerQuestion
+    }
+  })
 }
 
 /**

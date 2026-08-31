@@ -5,7 +5,8 @@ import { GraduationCap } from "lucide-react"
 import { InputSection, MIN_TEXT_LENGTH, MAX_TEXT_LENGTH } from "@/components/quiz/input-section"
 import { LoadingSection } from "@/components/quiz/loading-section"
 import { QuizSection, type AnswerMap } from "@/components/quiz/quiz-section"
-import { ResultSection } from "@/components/quiz/result-section"
+import { ResultSection, type GradedResult } from "@/components/quiz/result-section"
+import { ThemeToggle } from "@/components/theme-toggle"
 import type { Question, QuizType } from "@/lib/quiz-data"
 
 type Phase = "input" | "loading" | "quiz" | "result"
@@ -20,6 +21,7 @@ export default function Page() {
   const [isTimeout, setIsTimeout] = useState(false)
   const [questions, setQuestions] = useState<Question[]>([])
   const [answers, setAnswers] = useState<AnswerMap>({})
+  const [customGraded, setCustomGraded] = useState<GradedResult[] | undefined>(undefined)
   const resultRef = useRef<HTMLDivElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
 
@@ -101,17 +103,43 @@ export default function Page() {
     setAnswers((prev) => ({ ...prev, [questionId]: value }))
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     setPhase("result")
     window.setTimeout(() => {
       resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
     }, 80)
+
+    try {
+      const res = await fetch("/api/quiz/grade", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ questions, answers }),
+      })
+      const data = await res.json()
+      if (res.ok && data.success && Array.isArray(data.results)) {
+        const mapped: GradedResult[] = data.results.map((r: any) => {
+          const q = questions.find((item) => item.id === r.questionId) || questions[0]
+          return {
+            question: q,
+            userAnswerLabel: r.userAnswerLabel,
+            correctLabel: r.correctLabel,
+            answered: r.answered,
+            correct: r.correct,
+            feedback: r.feedback,
+          }
+        })
+        setCustomGraded(mapped)
+      }
+    } catch {
+      // Background AI grading failed, client instant evaluation will remain active
+    }
   }
 
   function handleRestart() {
     setPhase("input")
     setQuestions([])
     setAnswers({})
+    setCustomGraded(undefined)
     setError(null)
     setGenerationError(null)
     setIsTimeout(false)
@@ -120,7 +148,10 @@ export default function Page() {
 
   return (
     <main className="mx-auto flex min-h-svh w-full max-w-2xl flex-col gap-6 px-4 py-8 sm:py-12">
-      <header className="flex flex-col items-center gap-3 text-center">
+      <header className="relative flex flex-col items-center gap-3 text-center">
+        <div className="absolute right-0 top-0">
+          <ThemeToggle />
+        </div>
         <span className="flex size-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
           <GraduationCap className="size-6" aria-hidden />
         </span>
@@ -186,6 +217,7 @@ export default function Page() {
             <ResultSection
               questions={questions}
               answers={answers}
+              customGraded={customGraded}
               onRestart={handleRestart}
             />
           </div>

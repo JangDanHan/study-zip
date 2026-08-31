@@ -1,6 +1,7 @@
 "use client"
 
-import { Check, HelpCircle, RotateCcw, X, XCircle } from "lucide-react"
+import { useState } from "react"
+import { Check, Copy, HelpCircle, RotateCcw, Sparkles, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -8,12 +9,13 @@ import { cn } from "@/lib/utils"
 import type { Question } from "@/lib/quiz-data"
 import type { AnswerMap } from "./quiz-section"
 
-interface GradedResult {
+export interface GradedResult {
   question: Question
   userAnswerLabel: string
   correctLabel: string
   answered: boolean
   correct: boolean
+  feedback?: string
 }
 
 /**
@@ -81,17 +83,63 @@ interface ResultSectionProps {
   questions: Question[]
   answers: AnswerMap
   onRestart: () => void
+  customGraded?: GradedResult[]
 }
 
-export function ResultSection({ questions, answers, onRestart }: ResultSectionProps) {
-  const graded = questions.map((q) => gradeQuestion(q, answers[q.id]))
+export function ResultSection({ questions, answers, onRestart, customGraded }: ResultSectionProps) {
+  const [copied, setCopied] = useState(false)
+  const graded = customGraded || questions.map((q) => gradeQuestion(q, answers[q.id]))
   const correctCount = graded.filter((g) => g.correct).length
   const total = questions.length
   const percentage = Math.round((correctCount / total) * 100)
 
+  function handleCopyNote() {
+    let md = `# 📝 퀴즈 학습 오답노트\n\n`
+    md += `> **결과**: ${total}문제 중 ${correctCount}문제 정답 (${percentage}%)\n\n---\n\n`
+
+    graded.forEach((item, idx) => {
+      const statusIcon = item.correct ? "✅ 정답" : item.answered ? "❌ 오답" : "⚠️ 미응답"
+      md += `### [문제 ${idx + 1}] (${item.question.category} · ${item.question.kind === "multiple" ? "객관식" : "주관식"}) - ${statusIcon}\n`
+      md += `**질문**: ${item.question.prompt}\n\n`
+      md += `- **내 답안**: ${item.answered ? item.userAnswerLabel : "(미응답)"}\n`
+      if (!item.correct) {
+        md += `- **정답**: ${item.correctLabel}\n`
+      }
+      md += `- **해설**: ${item.question.explanation}\n\n---\n\n`
+    })
+
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(md)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2500)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-5">
       <ScoreSummary correctCount={correctCount} total={total} percentage={percentage} />
+
+      <div className="flex items-center justify-between px-1">
+        <h3 className="text-base font-bold text-foreground">문제별 채점 결과 및 해설</h3>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleCopyNote}
+          className="gap-1.5 text-xs font-semibold"
+        >
+          {copied ? (
+            <>
+              <Check className="size-3.5 text-green-600 dark:text-green-400" />
+              <span className="text-green-600 dark:text-green-400">오답노트 복사 완료!</span>
+            </>
+          ) : (
+            <>
+              <Copy className="size-3.5" />
+              <span>오답노트 복사 (Markdown)</span>
+            </>
+          )}
+        </Button>
+      </div>
 
       <div className="flex flex-col gap-4">
         {graded.map((result, index) => (
@@ -99,15 +147,26 @@ export function ResultSection({ questions, answers, onRestart }: ResultSectionPr
         ))}
       </div>
 
-      <Button
-        size="lg"
-        variant="default"
-        onClick={onRestart}
-        className="mt-2 w-full gap-2 text-base font-semibold h-12 shadow-sm"
-      >
-        <RotateCcw className="size-4" aria-hidden />
-        다시 만들기
-      </Button>
+      <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
+        <Button
+          size="lg"
+          variant="outline"
+          onClick={handleCopyNote}
+          className="flex-1 gap-2 text-base font-semibold h-12 shadow-xs"
+        >
+          {copied ? <Check className="size-4 text-green-600" /> : <Copy className="size-4" />}
+          {copied ? "클립보드에 복사됨!" : "오답노트 복사"}
+        </Button>
+        <Button
+          size="lg"
+          variant="default"
+          onClick={onRestart}
+          className="flex-1 gap-2 text-base font-semibold h-12 shadow-sm"
+        >
+          <RotateCcw className="size-4" aria-hidden />
+          새 퀴즈 만들기
+        </Button>
+      </div>
     </div>
   )
 }
@@ -259,6 +318,19 @@ function ResultCard({ result, index }: { result: GradedResult; index: number }) 
           <div className="flex flex-col gap-1 rounded-xl bg-green-500/10 dark:bg-green-950/30 px-4 py-3 border border-green-500/20">
             <span className="text-xs font-medium text-green-600 dark:text-green-400">정답</span>
             <span className="text-sm font-bold text-green-700 dark:text-green-300">{correctLabel}</span>
+          </div>
+        )}
+
+        {/* AI Feedback if present */}
+        {result.feedback && (
+          <div className="flex flex-col gap-1.5 rounded-xl bg-primary/5 border border-primary/20 p-4">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-primary">
+              <Sparkles className="size-3.5" />
+              <span>AI 주관식 1:1 맞춤 첨삭 피드백</span>
+            </div>
+            <p className="text-sm leading-relaxed text-foreground font-medium">
+              {result.feedback}
+            </p>
           </div>
         )}
 

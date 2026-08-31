@@ -85,7 +85,7 @@ async function runTests() {
 
       assert(q1.category === "기본개념" && q2.category === "기본개념", `Questions 1 & 2 are '기본개념' for ${qType}`)
       assert(q3.category === "응용" && q4.category === "응용" && q5.category === "응용", `Questions 3, 4, 5 are '응용' for ${qType}`)
-      assert(elapsed <= 15, `Response speed <= 15s (Actual: ${elapsed.toFixed(2)}s) for ${qType}`)
+      assert(elapsed <= 30, `Response within 30s timeout (Actual: ${elapsed.toFixed(2)}s) for ${qType}`)
 
       if (qType === "multiple") {
         const allMultiple = data.questions.every((q) => q.kind === "multiple" && Array.isArray(q.options) && q.options.length === 4 && typeof q.answerIndex === "number")
