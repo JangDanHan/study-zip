@@ -9,9 +9,11 @@
 1. [**PRD (제품 요구사항 정의서)**](file:///c:/study_zip/PRD.md)
    - 프로젝트 목표, 핵심 시나리오, 단일 화면 명세, 기능 및 7가지 예외 처리 정책, 완료 조건(DoD).
 2. [**개발 계획서 (development-plan.md)**](file:///c:/study_zip/docs/development-plan.md)
-   - PRD 기반 아키텍처 분석, 기술 스택, 4단계 스프린트 마일스톤 및 최종 구현 결과 보고.
-3. [**스프린트 백로그 (sprint-backlog.md)**](file:///c:/study_zip/docs/sprint-backlog.md)
-   - 스프린트 1~4별 세부 구현 태스크 체크리스트 및 완료 상태 추적.
+   - PRD 기반 아키텍처 분석, 기술 스택, 스프린트 마일스톤 및 구현 결과 보고.
+3. [**디자인 개편 계획서 (design-revamp-plan.md)**](file:///c:/study_zip/docs/design-revamp-plan.md)
+   - 바우하우스 · 네오 브루탈리즘(Bauhaus — Neo-Brutalist) 디자인 시스템 규격 및 스프린트 계획.
+4. [**스프린트 백로그 (sprint-backlog.md)**](file:///c:/study_zip/docs/sprint-backlog.md)
+   - 전체 스프린트별 세부 구현 태스크 체크리스트 및 완료 상태 추적.
 
 ---
 

@@ -2,9 +2,6 @@
 
 import { useState } from "react"
 import { Check, Copy, HelpCircle, RotateCcw, Sparkles, X } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import type { Question } from "@/lib/quiz-data"
 import type { AnswerMap } from "./quiz-section"
@@ -18,9 +15,6 @@ export interface GradedResult {
   feedback?: string
 }
 
-/**
- * Normalizes text for semantic/flexible matching (removes spaces, special characters, common Korean particles)
- */
 function normalizeKoreanText(text: string): string {
   return text
     .toLowerCase()
@@ -94,7 +88,7 @@ export function ResultSection({ questions, answers, onRestart, customGraded }: R
   const percentage = Math.round((correctCount / total) * 100)
 
   function handleCopyNote() {
-    let md = `# 📝 퀴즈 학습 오답노트\n\n`
+    let md = `# 📝 퀴즈 학습 오답노트 (정답률: ${percentage}%)\n\n`
     md += `> **결과**: ${total}문제 중 ${correctCount}문제 정답 (${percentage}%)\n\n---\n\n`
 
     graded.forEach((item, idx) => {
@@ -104,6 +98,9 @@ export function ResultSection({ questions, answers, onRestart, customGraded }: R
       md += `- **내 답안**: ${item.answered ? item.userAnswerLabel : "(미응답)"}\n`
       if (!item.correct) {
         md += `- **정답**: ${item.correctLabel}\n`
+      }
+      if (item.feedback) {
+        md += `- **AI 맞춤 피드백**: ${item.feedback}\n`
       }
       md += `- **해설**: ${item.question.explanation}\n\n---\n\n`
     })
@@ -116,133 +113,77 @@ export function ResultSection({ questions, answers, onRestart, customGraded }: R
   }
 
   return (
-    <div className="flex flex-col gap-5">
-      <ScoreSummary correctCount={correctCount} total={total} percentage={percentage} />
+    <div className="flex flex-col gap-6">
+      {/* Score Summary Box */}
+      <div className="brutal-card p-6 sm:p-8 bg-white border-[2.5px] border-[#1a1a1a] shadow-[6px_6px_0px_#1a1a1a] flex flex-col sm:flex-row items-center justify-between gap-6">
+        <div className="flex flex-col items-center sm:items-start text-center sm:text-left gap-2">
+          <span className="font-display text-xs font-black uppercase bg-[#1a1a1a] text-[#ffcc00] px-2 py-0.5 tracking-wider">
+            EVALUATION REPORT
+          </span>
+          <h2 className="font-display text-3xl sm:text-4xl font-black uppercase text-[#1a1a1a]">
+            {total}문제 중 <span className="bg-[#ffcc00] px-1.5 border-2 border-[#1a1a1a]">{correctCount}문제</span> 정답
+          </h2>
+          <p className="text-sm font-bold text-[#1a1a1a]/80 max-w-md">
+            {percentage === 100
+              ? "완벽합니다! 핵심 개념과 응용 원리를 완전히 마스터하셨습니다. 🎉"
+              : percentage >= 80
+                ? "훌륭합니다! 대부분의 개념을 탄탄하게 이해하고 계십니다."
+                : percentage >= 60
+                  ? "좋습니다! 오답 문제의 상세 해설을 꼼꼼히 복습해 보세요."
+                  : "해설을 확인하고 새로운 퀴즈를 생성하여 다시 도전해 보세요."}
+          </p>
+        </div>
 
-      <div className="flex items-center justify-between px-1">
-        <h3 className="text-base font-bold text-foreground">문제별 채점 결과 및 해설</h3>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleCopyNote}
-          className="gap-1.5 text-xs font-semibold"
-        >
-          {copied ? (
-            <>
-              <Check className="size-3.5 text-green-600 dark:text-green-400" />
-              <span className="text-green-600 dark:text-green-400">오답노트 복사 완료!</span>
-            </>
-          ) : (
-            <>
-              <Copy className="size-3.5" />
-              <span>오답노트 복사 (Markdown)</span>
-            </>
-          )}
-        </Button>
+        <div className="border-[3px] border-[#1a1a1a] bg-[#f5f0e8] p-4 flex flex-col items-center justify-center min-w-32 shadow-[4px_4px_0px_#1a1a1a]">
+          <span className="font-display text-4xl font-black text-[#1a1a1a] font-mono">
+            {percentage}%
+          </span>
+          <span className="text-xs font-black uppercase text-[#1a1a1a]/70">SCORE</span>
+        </div>
       </div>
 
+      {/* Action Bar */}
+      <div className="flex items-center justify-between px-1">
+        <h3 className="font-display text-lg font-black uppercase text-[#1a1a1a]">
+          문제별 채점 결과 & 해설
+        </h3>
+        <button
+          type="button"
+          onClick={handleCopyNote}
+          className="brutal-btn bg-[#ffffff] text-[#1a1a1a] px-3.5 py-1.5 text-xs font-black uppercase flex items-center gap-1.5 hover:bg-[#1a1a1a] hover:text-[#ffcc00]"
+        >
+          {copied ? <Check className="size-3.5 text-green-600" /> : <Copy className="size-3.5" />}
+          <span>{copied ? "복사 완료!" : "오답노트 복사"}</span>
+        </button>
+      </div>
+
+      {/* Result Cards */}
       <div className="flex flex-col gap-4">
         {graded.map((result, index) => (
           <ResultCard key={result.question.id} result={result} index={index} />
         ))}
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
-        <Button
-          size="lg"
-          variant="outline"
+      {/* Bottom Actions */}
+      <div className="flex flex-col sm:flex-row gap-3 pt-2">
+        <button
+          type="button"
           onClick={handleCopyNote}
-          className="flex-1 gap-2 text-base font-semibold h-12 shadow-xs"
+          className="brutal-btn bg-white text-[#1a1a1a] flex-1 py-3.5 text-base font-black uppercase flex items-center justify-center gap-2 hover:bg-[#1a1a1a] hover:text-[#ffcc00]"
         >
-          {copied ? <Check className="size-4 text-green-600" /> : <Copy className="size-4" />}
-          {copied ? "클립보드에 복사됨!" : "오답노트 복사"}
-        </Button>
-        <Button
-          size="lg"
-          variant="default"
+          {copied ? <Check className="size-5" /> : <Copy className="size-5" />}
+          <span>{copied ? "클립보드에 복사됨!" : "오답노트 복사 (Markdown)"}</span>
+        </button>
+        <button
+          type="button"
           onClick={onRestart}
-          className="flex-1 gap-2 text-base font-semibold h-12 shadow-sm"
+          className="brutal-btn bg-[#ffcc00] text-[#1a1a1a] flex-1 py-3.5 text-base font-black uppercase flex items-center justify-center gap-2 hover:bg-[#1a1a1a] hover:text-[#ffcc00]"
         >
-          <RotateCcw className="size-4" aria-hidden />
-          새 퀴즈 만들기
-        </Button>
+          <RotateCcw className="size-5" />
+          <span>새 퀴즈 만들기</span>
+        </button>
       </div>
     </div>
-  )
-}
-
-function ScoreSummary({
-  correctCount,
-  total,
-  percentage,
-}: {
-  correctCount: number
-  total: number
-  percentage: number
-}) {
-  const radius = 42
-  const circumference = 2 * Math.PI * radius
-  const offset = circumference - (percentage / 100) * circumference
-
-  return (
-    <Card className="border-border/70 shadow-sm overflow-hidden bg-card/80 backdrop-blur-xs">
-      <CardContent className="flex flex-col items-center gap-6 p-6 sm:flex-row sm:justify-between sm:p-8">
-        <div className="flex flex-col items-center gap-1.5 sm:items-start text-center sm:text-left">
-          <Badge variant="secondary" className="font-semibold mb-1">
-            채점 완료
-          </Badge>
-          <p className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
-            {total}문제 중 <span className="text-primary">{correctCount}문제</span> 정답
-          </p>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            {percentage === 100
-              ? "완벽해요! 핵심 개념과 응용 원리를 완전히 마스터하셨습니다. 🎉"
-              : percentage >= 80
-                ? "훌륭해요! 대부분의 개념을 잘 이해하고 계십니다."
-                : percentage >= 60
-                  ? "좋아요! 틀린 문제의 해설을 확인하고 보완해 보세요."
-                  : "해설을 꼼꼼히 복습한 후 다시 한 번 퀴즈를 생성해 보세요."}
-          </p>
-        </div>
-
-        <div className="relative flex size-28 shrink-0 items-center justify-center">
-          <svg className="size-full -rotate-90" viewBox="0 0 100 100" aria-hidden>
-            <circle
-              cx="50"
-              cy="50"
-              r={radius}
-              fill="none"
-              stroke="currentColor"
-              className="text-muted/40"
-              strokeWidth="8"
-            />
-            <circle
-              cx="50"
-              cy="50"
-              r={radius}
-              fill="none"
-              stroke="currentColor"
-              className={cn(
-                "transition-[stroke-dashoffset] duration-700 ease-out",
-                percentage >= 80
-                  ? "text-primary"
-                  : percentage >= 50
-                    ? "text-amber-500"
-                    : "text-destructive",
-              )}
-              strokeWidth="8"
-              strokeLinecap="round"
-              strokeDasharray={circumference}
-              strokeDashoffset={offset}
-            />
-          </svg>
-          <div className="absolute flex flex-col items-center">
-            <span className="text-2xl font-bold text-foreground font-mono">{percentage}%</span>
-            <span className="text-[11px] font-medium text-muted-foreground">정답률</span>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
   )
 }
 
@@ -251,119 +192,92 @@ function ResultCard({ result, index }: { result: GradedResult; index: number }) 
   const isConcept = question.category === "기본개념"
 
   return (
-    <Card
+    <div
       className={cn(
-        "border-l-4 shadow-sm transition-all",
-        correct
-          ? "border-l-green-600 dark:border-l-green-500 border-border/70"
-          : "border-l-red-600 dark:border-l-red-500 border-border/70",
+        "brutal-card p-5 sm:p-6 bg-white border-[2.5px] border-[#1a1a1a] flex flex-col gap-4 shadow-[4px_4px_0px_#1a1a1a]",
+        correct ? "border-l-[6px] border-l-[#1a1a1a]" : "border-l-[6px] border-l-[#e63b2e]",
       )}
     >
-      <CardHeader className="gap-3 pb-0">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <span className="flex size-7 items-center justify-center rounded-full bg-secondary text-sm font-bold text-secondary-foreground">
-              {index + 1}
-            </span>
-            <Badge
-              variant="secondary"
-              className={cn(
-                "font-semibold",
-                isConcept
-                  ? "bg-primary/10 text-primary border border-primary/20"
-                  : "bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20",
-              )}
-            >
-              {question.category}
-            </Badge>
-            <Badge variant="outline" className="text-xs text-muted-foreground font-normal">
-              {question.kind === "multiple" ? "객관식" : "주관식"}
-            </Badge>
-            {!answered && (
-              <Badge
-                variant="destructive"
-                className="bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/30 text-xs font-semibold"
-              >
-                미응답
-              </Badge>
+      <div className="flex items-center justify-between gap-2 border-b-2 border-[#1a1a1a] pb-3">
+        <div className="flex items-center gap-2">
+          <span className="font-display size-7 bg-[#1a1a1a] text-white flex items-center justify-center text-sm font-black">
+            {index + 1}
+          </span>
+          <span
+            className={cn(
+              "text-xs font-black uppercase px-2 py-0.5 border-2 border-[#1a1a1a]",
+              isConcept ? "bg-[#0055ff] text-white" : "bg-[#ffcc00] text-[#1a1a1a]",
             )}
-          </div>
-          <StatusIcon correct={correct} />
+          >
+            {question.category}
+          </span>
+          <span className="text-xs font-mono font-bold bg-[#f5f0e8] px-2 py-0.5 border border-[#1a1a1a]">
+            {question.kind === "multiple" ? "객관식" : "주관식"}
+          </span>
+          {!answered && (
+            <span className="text-xs font-black uppercase bg-[#e63b2e] text-white px-2 py-0.5 border border-[#1a1a1a]">
+              미응답
+            </span>
+          )}
         </div>
-        <p className="text-base font-semibold leading-relaxed text-pretty text-foreground pt-1">
-          {question.prompt}
-        </p>
-      </CardHeader>
-
-      <CardContent className="flex flex-col gap-3.5 pt-4">
-        {/* User Answer */}
-        <div
+        <span
           className={cn(
-            "flex flex-col gap-1 rounded-xl px-4 py-3",
-            correct
-              ? "bg-green-500/10 dark:bg-green-950/30 text-green-700 dark:text-green-300"
-              : answered
-                ? "bg-red-500/10 dark:bg-red-950/30 text-red-700 dark:text-red-300"
-                : "bg-muted/70 text-muted-foreground",
+            "text-xs font-black uppercase px-2.5 py-1 border-2 border-[#1a1a1a] flex items-center gap-1",
+            correct ? "bg-[#ffcc00] text-[#1a1a1a]" : "bg-[#e63b2e] text-white",
           )}
         >
-          <span className="text-xs font-medium text-muted-foreground">내 제출 답안</span>
-          <span className="text-sm font-semibold">
-            {answered ? userAnswerLabel : "응답하지 않았어요 (미응답 오답 처리)"}
+          {correct ? <Check className="size-3.5 stroke-[3]" /> : <X className="size-3.5 stroke-[3]" />}
+          <span>{correct ? "정답" : "오답"}</span>
+        </span>
+      </div>
+
+      <p className="text-base font-bold leading-relaxed text-[#1a1a1a]">
+        {question.prompt}
+      </p>
+
+      {/* Answer Details */}
+      <div className="flex flex-col gap-2.5">
+        <div
+          className={cn(
+            "p-3 border-2 border-[#1a1a1a] flex flex-col gap-0.5",
+            correct ? "bg-[#f5f0e8]" : "bg-red-50",
+          )}
+        >
+          <span className="text-[11px] font-black uppercase font-mono text-[#1a1a1a]/70">내 제출 답안</span>
+          <span className="text-sm font-bold text-[#1a1a1a]">
+            {answered ? userAnswerLabel : "(미응답 오답 처리)"}
           </span>
         </div>
 
-        {/* Correct Answer if incorrect */}
         {!correct && (
-          <div className="flex flex-col gap-1 rounded-xl bg-green-500/10 dark:bg-green-950/30 px-4 py-3 border border-green-500/20">
-            <span className="text-xs font-medium text-green-600 dark:text-green-400">정답</span>
-            <span className="text-sm font-bold text-green-700 dark:text-green-300">{correctLabel}</span>
+          <div className="p-3 border-2 border-[#1a1a1a] bg-[#ffcc00]/20 flex flex-col gap-0.5">
+            <span className="text-[11px] font-black uppercase font-mono text-[#1a1a1a]/70">모범 정답</span>
+            <span className="text-sm font-black text-[#1a1a1a]">{correctLabel}</span>
           </div>
         )}
 
-        {/* AI Feedback if present */}
         {result.feedback && (
-          <div className="flex flex-col gap-1.5 rounded-xl bg-primary/5 border border-primary/20 p-4">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-primary">
+          <div className="p-3 border-2 border-[#1a1a1a] bg-[#0055ff]/10 flex flex-col gap-1">
+            <div className="flex items-center gap-1.5 text-xs font-black uppercase text-[#0055ff]">
               <Sparkles className="size-3.5" />
               <span>AI 주관식 1:1 맞춤 첨삭 피드백</span>
             </div>
-            <p className="text-sm leading-relaxed text-foreground font-medium">
+            <p className="text-sm font-bold text-[#1a1a1a] leading-relaxed">
               {result.feedback}
             </p>
           </div>
         )}
 
-        {/* Explanation */}
-        <div className="flex flex-col gap-1.5 rounded-xl bg-card border border-border/60 p-4">
-          <div className="flex items-center gap-1 text-xs font-bold text-foreground">
-            <HelpCircle className="size-3.5 text-primary" />
+        <div className="p-3.5 border-2 border-[#1a1a1a] bg-[#f5f0e8] flex flex-col gap-1">
+          <div className="flex items-center gap-1 text-xs font-black uppercase text-[#1a1a1a]">
+            <HelpCircle className="size-3.5 text-[#0055ff]" />
             <span>해설</span>
           </div>
-          <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
+          <p className="text-sm text-[#1a1a1a]/85 leading-relaxed whitespace-pre-line font-medium">
             {question.explanation}
           </p>
         </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-function StatusIcon({ correct }: { correct: boolean }) {
-  return (
-    <span
-      className={cn(
-        "flex size-8 shrink-0 items-center justify-center rounded-full font-bold shadow-xs",
-        correct
-          ? "bg-green-600 text-white"
-          : "bg-red-600 text-white",
-      )}
-    >
-      {correct ? (
-        <Check className="size-5 stroke-[2.5]" aria-label="정답" />
-      ) : (
-        <X className="size-5 stroke-[2.5]" aria-label="오답" />
-      )}
-    </span>
+      </div>
+    </div>
   )
 }

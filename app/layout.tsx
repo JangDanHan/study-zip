@@ -1,7 +1,13 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
-import { Noto_Sans_KR } from 'next/font/google'
+import { Noto_Sans_KR, Space_Grotesk } from 'next/font/google'
 import './globals.css'
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  weight: ['500', '700'],
+  variable: '--font-display',
+})
 
 const notoSansKr = Noto_Sans_KR({
   subsets: ['latin'],
@@ -10,8 +16,8 @@ const notoSansKr = Noto_Sans_KR({
 })
 
 export const metadata: Metadata = {
-  title: '퀴즈메이커 · 학습 확인 퀴즈 생성',
-  description: '공부한 내용을 붙여넣으면 학습 확인 퀴즈를 만들어드려요.',
+  title: 'STUDY-ZIP · AI 학습 확인 퀴즈 메이커',
+  description: '공부한 내용을 붙여넣으면 Gemini AI가 즉시 이해도 점검 퀴즈를 생성하고 채점해 드립니다.',
   generator: 'v0.app',
   icons: {
     icon: [
@@ -33,11 +39,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  colorScheme: 'light dark',
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: 'white' },
-    { media: '(prefers-color-scheme: dark)', color: 'black' },
-  ],
+  themeColor: '#f5f0e8',
 }
 
 export default function RootLayout({
@@ -46,8 +48,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="ko" className={`${notoSansKr.variable} bg-background`}>
-      <body className="font-sans antialiased">
+    <html lang="ko" className={`${spaceGrotesk.variable} ${notoSansKr.variable}`}>
+      <body className="font-sans antialiased bg-[#f5f0e8] text-[#1a1a1a] min-h-screen selection:bg-[#ffcc00] selection:text-[#1a1a1a]">
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
