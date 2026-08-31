@@ -6,7 +6,7 @@ import { InputSection, MIN_TEXT_LENGTH, MAX_TEXT_LENGTH } from "@/components/qui
 import { LoadingSection } from "@/components/quiz/loading-section"
 import { QuizSection, type AnswerMap } from "@/components/quiz/quiz-section"
 import { ResultSection } from "@/components/quiz/result-section"
-import { generateQuestions, type Question, type QuizType } from "@/lib/quiz-data"
+import type { Question, QuizType } from "@/lib/quiz-data"
 
 type Phase = "input" | "loading" | "quiz" | "result"
 
@@ -16,13 +16,16 @@ export default function Page() {
   const [quizType, setQuizType] = useState<QuizType>("multiple")
   const [error, setError] = useState<string | null>(null)
   const [autoFocusTrigger, setAutoFocusTrigger] = useState(0)
+  const [generationError, setGenerationError] = useState<string | null>(null)
+  const [isTimeout, setIsTimeout] = useState(false)
   const [questions, setQuestions] = useState<Question[]>([])
   const [answers, setAnswers] = useState<AnswerMap>({})
   const resultRef = useRef<HTMLDivElement>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
-  function handleGenerate() {
+  async function handleGenerate() {
     const trimmed = text.trim()
-    
+
     // PRD 5-1: Empty input
     if (trimmed.length === 0) {
       setError("학습 내용을 입력해 주세요")
@@ -45,14 +48,53 @@ export default function Page() {
     }
 
     setError(null)
+    setGenerationError(null)
+    setIsTimeout(false)
     setPhase("loading")
 
-    // Simulate quiz generation (will be connected to API in Sprint 2)
-    window.setTimeout(() => {
-      setQuestions(generateQuestions(quizType))
+    // Abort previous request if any
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+    const controller = new AbortController()
+    abortControllerRef.current = controller
+
+    // 30-second timeout handling (PRD 5-4)
+    const timeoutId = setTimeout(() => {
+      controller.abort()
+      setIsTimeout(true)
+      setGenerationError("응답이 지연되고 있습니다. 다시 시도해 주세요")
+    }, 30000)
+
+    try {
+      const response = await fetch("/api/quiz/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: trimmed, quizType }),
+        signal: controller.signal,
+      })
+
+      clearTimeout(timeoutId)
+
+      const data = await response.json()
+
+      if (!response.ok || !data.success || !Array.isArray(data.questions) || data.questions.length !== 5) {
+        throw new Error(data.error || "문제 생성에 실패했습니다. 다시 시도해 주세요")
+      }
+
+      setQuestions(data.questions)
       setAnswers({})
+      setGenerationError(null)
       setPhase("quiz")
-    }, 1800)
+    } catch (err: unknown) {
+      clearTimeout(timeoutId)
+      const errorObj = err as Error
+      if (errorObj?.name === "AbortError" && isTimeout) {
+        // Handled by timeout handler
+        return
+      }
+      setGenerationError(errorObj?.message || "문제 생성에 실패했습니다. 다시 시도해 주세요")
+    }
   }
 
   function handleAnswerChange(questionId: number, value: string) {
@@ -68,11 +110,11 @@ export default function Page() {
 
   function handleRestart() {
     setPhase("input")
-    setText("")
-    setQuizType("multiple")
     setQuestions([])
     setAnswers({})
     setError(null)
+    setGenerationError(null)
+    setIsTimeout(false)
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
@@ -98,12 +140,13 @@ export default function Page() {
           onTextChange={(v) => {
             setText(v)
             if (error) setError(null)
+            if (generationError) setGenerationError(null)
           }}
           quizType={quizType}
           onQuizTypeChange={setQuizType}
           error={error}
           onGenerate={handleGenerate}
-          disabled={phase === "loading"}
+          disabled={phase === "loading" && !generationError}
           autoFocusTrigger={autoFocusTrigger}
         />
 
@@ -112,7 +155,11 @@ export default function Page() {
             key="loading"
             className="animate-in fade-in slide-in-from-bottom-3 duration-500"
           >
-            <LoadingSection />
+            <LoadingSection
+              error={generationError}
+              isTimeout={isTimeout}
+              onRetry={handleGenerate}
+            />
           </div>
         )}
 
@@ -146,8 +193,9 @@ export default function Page() {
       </div>
 
       <footer className="mt-auto pt-4 text-center text-xs text-muted-foreground">
-        입력한 내용은 저장되지 않으며, 이 화면은 데모용 더미 데이터로 동작해요.
+        입력한 내용은 영구 저장되지 않으며, 단일 화면에서 즉시 퀴즈가 생성되고 채점됩니다.
       </footer>
     </main>
   )
 }
+
