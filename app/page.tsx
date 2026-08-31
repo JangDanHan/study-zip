@@ -160,11 +160,7 @@ export default function Page() {
 
   // 1. Landing View
   if (viewMode === "landing") {
-    return (
-      <main className="px-4 py-8 sm:py-12 min-h-screen bg-[#f5f0e8] text-[#1a1a1a]">
-        <LandingPage onStartQuiz={handleStartApp} />
-      </main>
-    )
+    return <LandingPage onStartQuiz={handleStartApp} />
   }
 
   // 2. Quiz Maker App View
